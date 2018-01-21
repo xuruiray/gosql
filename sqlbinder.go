@@ -5,17 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"unicode"
 )
 
 //Named 将传入的sql与params参数tablename表名 整理成 prepare statement
-func Named(sql string, params map[string]interface{}, tablename string) (string, []interface{}, error) {
-	sql = fmt.Sprintf(sql, tablename)
-	sql, names, err := getParamsName(sql)
+func GetPreparedStatement(sql string, params map[string]interface{}) (string, []interface{}, error) {
+
+	sql, params, err := getStatement([]byte(sql), params)
+
+	sql, names, err := getPrepared(sql)
 	if err != nil {
 		return "", nil, err
 	}
+
 	return bindMap(sql, names, params)
 }
 
@@ -49,25 +53,92 @@ func bindMap(sql string, names []string, params map[string]interface{}) (string,
 	return sql, paramsArr, nil
 }
 
-//getParamsName 转换 sql 字符串为 prestatement 并将 属性名 提取出来
-func getParamsName(sql string) (string, []string, error) {
+// getStatement 获取 sql statement 处理字符串拼接
+func getStatement(sqlStr []byte, datamap map[string]interface{}) (string, map[string]interface{}, error) {
+
+	//保证最后一个参数也能被处理
+	sqlStr = append(sqlStr, ' ')
+
+	//若无需拼接字符串，则直接返回
+	if len(datamap) == 0 {
+		return string(sqlStr), datamap, nil
+	}
+
+	found := false
+	name := make([]byte, 0, 12)
+	sqlResult := make([]byte, 0, len(sqlStr))
+
+	for i, b := range sqlStr {
+		if b == '#' {
+			//若存在 '##' 则转译为 #
+			if sqlStr[i-1] == '#' {
+				sqlResult = append(sqlResult, '#')
+				found = false
+			}
+			if found {
+				return "", nil, errors.New("can`t insert # in the params")
+			}
+			found = true
+			continue
+		}
+
+		if !found {
+			sqlResult = append(sqlResult, b)
+		}
+
+		//sql 字符串中 属性名 必须为仅包含  '.' '_' 'A-Z' 'a-z' '0-9'
+		if found && b != '.' && b != '_' && !unicode.IsLetter(rune(b)) && !unicode.IsNumber(rune(b)) {
+			value, ok := datamap[string(name)]
+			if !ok {
+				return "", nil, errors.New(fmt.Sprintf("lost params %v",string(name)))
+			}
+			paramValue := transToString(value)
+			delete(datamap, string(name))
+			sqlResult = bytes.Join([][]byte{sqlResult, []byte(paramValue)}, nil)
+			sqlResult = append(sqlResult, b)
+			found = false
+			name=make([]byte, 0, 12)
+		}
+
+		if found {
+			name = append(name, b)
+		}
+
+	}
+
+	if found{
+		value, ok := datamap[string(name)]
+		if !ok {
+			return "", nil, errors.New(fmt.Sprintf("lost params %v",string(name)))
+		}
+		paramValue := transToString(value)
+		delete(datamap, string(name))
+		sqlResult = bytes.Join([][]byte{sqlResult, []byte(paramValue)}, nil)
+		found = false
+	}
+
+	return string(sqlResult), datamap, nil
+}
+
+//getPreparedStatement 转换 sql 字符串为 Prepared Statement 并将 属性名 提取出来
+func getPrepared(sqlStr string) (string, []string, error) {
 	names := make([]string, 0, 10)
 
 	begin := 0
 	found := false
-	sqlResult := make([]rune, 0, len(sql))
+	sqlResult := make([]rune, 0, len(sqlStr))
 
-	for i, b := range sql {
-		if b == ':' {
-			//若连续两个：：在转换 prestatement 时 会转义为 ：
-			if sql[i-1] == ':' {
+	for i, b := range sqlStr {
+		if b == '$' {
+			//若存在 '$$' 则转译为 $
+			if sqlStr[i-1] == '$' {
 				sqlResult = append(sqlResult, ':')
 				found = false
 				continue
 			}
-			//若在属性名中发现 ： 则报错
+			//若在属性名中发现 $ 则报错
 			if found {
-				return "", nil, errors.New("can`t insert : in the params")
+				return "", nil, errors.New("can`t insert $ in the params")
 			}
 
 			//找到属性名的 起始下标
@@ -85,13 +156,13 @@ func getParamsName(sql string) (string, []string, error) {
 		//sql 字符串中 属性名 必须为仅包含  '.' '_' 'A-Z' 'a-z' '0-9'
 		if found && b != '.' && b != '_' && !unicode.IsLetter(b) && !unicode.IsNumber(b) {
 			sqlResult = append(sqlResult, b)
-			names = append(names, sql[begin:i])
+			names = append(names, sqlStr[begin:i])
 			found = false
 		}
 
 	}
 	if found {
-		names = append(names, sql[begin:])
+		names = append(names, sqlStr[begin:])
 	}
 	return string(sqlResult), names, nil
 }
@@ -137,4 +208,29 @@ func isSlice(params interface{}) bool {
 		return true
 	}
 	return false
+}
+
+// TransToString 强制类型转换为 string
+func transToString(data interface{}) (res string) {
+	switch v := data.(type) {
+	case bool:
+		res = strconv.FormatBool(v)
+	case float32:
+		res = strconv.FormatFloat(float64(v), 'f', 6, 32)
+	case float64:
+		res = strconv.FormatFloat(v, 'f', 6, 64)
+	case int, int8, int16, int32, int64:
+		val := reflect.ValueOf(data)
+		res = strconv.FormatInt(val.Int(), 10)
+	case uint, uint8, uint16, uint32, uint64:
+		val := reflect.ValueOf(data)
+		res = strconv.FormatUint(val.Uint(), 10)
+	case string:
+		res = v
+	case []byte:
+		res = string(v)
+	default:
+		res = fmt.Sprintf("%v", v)
+	}
+	return
 }

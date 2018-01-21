@@ -1,69 +1,98 @@
 package gosql
 
 import (
+	"reflect"
 	"testing"
 )
 
-func TestGetParamsName(t *testing.T) {
-	sqls := []string{
-		"select event_id,order_id from %s where driver_id in (:ids) or driver_id=:driver_id",
-
-		"select event_id,order_id from %s where driver_id in (:ids) or" +
-			" driver_id=:driver_id and event_id>:Ece limit :pageStart,:PageCount order by :pagesize desc",
-
-		"select event_id,order_id from %s where driver_id in (:id:s)",
+func Test_getStatement(t *testing.T) {
+	type args struct {
+		sqlStr  string
+		datamap map[string]interface{}
 	}
 
-	resultMap := map[string][]string{
-		"select event_id,order_id from %s where driver_id in (?) or driver_id=?": {"ids", "driver_id"},
-
-		"select event_id,order_id from %s where driver_id in (?) or driver_id=? and event_id>? limit ?,? order by ? desc": {"ids",
-			"driver_id", "Ece", "pageStart", "PageCount", "pagesize"},
-
-		"select event_id,order_id from %s where driver_id in (?)": {"ids"},
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		want1   map[string]interface{}
+		wantErr bool
+	}{
+		struct {
+			name    string
+			args    args
+			want    string
+			want1   map[string]interface{}
+			wantErr bool
+		}{name: "test01", args: args{
+			sqlStr: "select * from driver_info where id=#id,driver_id=#driver_id #sort",
+			datamap: map[string]interface{}{
+				"id":        123,
+				"driver_id": "456",
+				"sort":      "order by id",
+			},
+		}, want: "select * from driver_info where id=123,driver_id=456 order by id ", want1: map[string]interface{}{}, wantErr: false},
 	}
 
-	output := []bool{
-		true,
-		true,
-		false,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := getStatement([]byte(tt.args.sqlStr), tt.args.datamap)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getStatement() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("getStatement() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("getStatement() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestGetPreparedStatement(t *testing.T) {
+	type args struct {
+		sql    string
+		params map[string]interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		want1   []interface{}
+		wantErr bool
+	}{
+		struct {
+			name    string
+			args    args
+			want    string
+			want1   []interface{}
+			wantErr bool
+		}{name: "test01", args: args{
+			sql: "select * from driver_info where id=#id,driver_id=$driver_id #sort",
+			params: map[string]interface{}{
+				"id":        123,
+				"driver_id": "456",
+				"sort":      "order by id",
+			},
+		}, want: "select * from driver_info where id=123,driver_id=? order by id ",want1:[]interface{}{"456"}, wantErr: false},
+
 	}
 
-	for index, sql := range sqls {
-		presql, result, err := getParamsName(sql)
-		if err != nil {
-			if output[index] {
-				t.Log(err)
-				t.Fail()
-			} else {
-				continue
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := GetPreparedStatement(tt.args.sql, tt.args.params)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("GetPreparedStatement() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
-		}
-
-		if params, ok := resultMap[presql]; ok {
-			for i, param := range params {
-				if param != result[i] {
-					if output[index] {
-						t.Log(param, result[i])
-						t.Fail()
-					} else {
-						continue
-					}
-				}
+			if got != tt.want {
+				t.Errorf("GetPreparedStatement() got = %v, want %v", got, tt.want)
 			}
-		} else {
-			if output[index] {
-				t.Log("can find pre SQL")
-				t.Fail()
-			} else {
-				continue
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("GetPreparedStatement() got1 = %v, want %v", got1, tt.want1)
 			}
-		}
-
-		if !output[index] {
-			t.Logf("sql index %d should be faild", index)
-			t.Fail()
-		}
-
+		})
 	}
 }
