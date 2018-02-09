@@ -4,7 +4,10 @@ Golang orm tool, and very similar to mybatis.
 
 follow the example of <a href="http://github.com/jmoiron/sqlx/">github.com/jmoiron/sqlx</a>
 
-
+```
+go get github.com/Xu-Rui/gosql
+```
+---
 ### example
 
 1. \# represents string splicing
@@ -26,5 +29,7 @@ CREATE TABLE `driver_info` (
   KEY `inx_driver_id_age` (`driver_id`,`age`)
 ) ENGINE=InnoDB AUTO_INCREMENT=124 DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 ```
+[demo](https://github.com/Xu-Rui/gosql/blob/master/executor_test.go)
+---
 
 ![](http://photo.rhymecode.com/%E6%8F%92%E5%9B%BE/icon.png)
