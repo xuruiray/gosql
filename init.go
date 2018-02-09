@@ -5,6 +5,7 @@ import (
 	"upper.io/db.v3/mysql"
 )
 
+// GetMySQLConn 获取 mysql 连接
 func GetMySQLConn(username, password, url, dbname string) (sqlbuilder.Database, error) {
 	var settings mysql.ConnectionURL
 	settings, err := mysql.ParseURL(username + ":" + password + "@tcp(" + url + ")/" + dbname)

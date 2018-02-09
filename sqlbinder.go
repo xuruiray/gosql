@@ -23,6 +23,7 @@ func GetPreparedStatement(sql string, params map[string]interface{}) (string, []
 	return bindMap(sql, names, params)
 }
 
+// bindMap 绑定 map
 func bindMap(sql string, names []string, params map[string]interface{}) (string, []interface{}, error) {
 
 	paramsArr := make([]interface{}, 0, len(params)*2)

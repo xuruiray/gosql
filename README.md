@@ -4,10 +4,18 @@ Golang orm tool, and very similar to mybatis.
 
 follow the example of <a href="http://github.com/jmoiron/sqlx/">github.com/jmoiron/sqlx</a>
 
+
+### example
+
+1. \# represents string splicing
+2. $  represents prepare statement placeholder
+
+ test sql
 ```sql
-select * from $tablename where driver_id = $driver_id #sort
+select * from #tablename where driver_id = $driver_id #sort
 ```
 
+ test table
 ```sql
 CREATE TABLE `driver_info` (
   `id` int(20) NOT NULL AUTO_INCREMENT COMMENT '自增id',
