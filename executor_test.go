@@ -50,7 +50,7 @@ func TestGetOne(t *testing.T) {
 	}
 
 	var result DriverInfo
-	err = GetOne(conn, "select * from #tablename where driver_id = $driver_id #sort", datamap, &result)
+	err = QueryOne(conn, "select * from #tablename where driver_id = $driver_id #sort", datamap, &result)
 	if err != nil {
 		t.Error(err)
 		t.Fail()

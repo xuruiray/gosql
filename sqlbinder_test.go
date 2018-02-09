@@ -76,8 +76,7 @@ func TestGetPreparedStatement(t *testing.T) {
 				"driver_id": "456",
 				"sort":      "order by id",
 			},
-		}, want: "select * from driver_info where id=123,driver_id=? order by id ",want1:[]interface{}{"456"}, wantErr: false},
-
+		}, want: "select * from driver_info where id=123,driver_id=? order by id ", want1: []interface{}{"456"}, wantErr: false},
 	}
 
 	for _, tt := range tests {

@@ -23,7 +23,7 @@ func Execute(conn sqlbuilder.Database, sql string, params map[string]interface{}
 }
 
 // GetList 封装查询方法 查询多行数据 结果封入res中
-func GetList(conn sqlbuilder.Database, sql string, params map[string]interface{}, res interface{}) error {
+func QueryList(conn sqlbuilder.Database, sql string, params map[string]interface{}, res interface{}) error {
 	rows, err := prepareParams(conn, sql, params)
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func GetList(conn sqlbuilder.Database, sql string, params map[string]interface{}
 }
 
 // GetOne 封装查询方法 查询单行数据 结果封入res中
-func GetOne(conn sqlbuilder.Database, sqlStr string, params map[string]interface{}, res interface{}) error {
+func QueryOne(conn sqlbuilder.Database, sqlStr string, params map[string]interface{}, res interface{}) error {
 	rows, err := prepareParams(conn, sqlStr, params)
 	if err != nil {
 		return err
