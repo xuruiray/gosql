@@ -10,7 +10,7 @@ import (
 	"unicode"
 )
 
-//Named 将传入的sql与params参数tablename表名 整理成 prepare statement
+//GetPreparedStatement 将传入的sql与params参数 整理成 prepare statement
 func GetPreparedStatement(sql string, params map[string]interface{}) (string, []interface{}, error) {
 
 	sql, params, err := getStatement([]byte(sql), params)
@@ -90,14 +90,14 @@ func getStatement(sqlStr []byte, datamap map[string]interface{}) (string, map[st
 		if found && b != '.' && b != '_' && !unicode.IsLetter(rune(b)) && !unicode.IsNumber(rune(b)) {
 			value, ok := datamap[string(name)]
 			if !ok {
-				return "", nil, errors.New(fmt.Sprintf("lost params %v",string(name)))
+				return "", nil, errors.New(fmt.Sprintf("lost params %v", string(name)))
 			}
 			paramValue := transToString(value)
 			delete(datamap, string(name))
 			sqlResult = bytes.Join([][]byte{sqlResult, []byte(paramValue)}, nil)
 			sqlResult = append(sqlResult, b)
 			found = false
-			name=make([]byte, 0, 12)
+			name = make([]byte, 0, 12)
 		}
 
 		if found {
@@ -106,10 +106,10 @@ func getStatement(sqlStr []byte, datamap map[string]interface{}) (string, map[st
 
 	}
 
-	if found{
+	if found {
 		value, ok := datamap[string(name)]
 		if !ok {
-			return "", nil, errors.New(fmt.Sprintf("lost params %v",string(name)))
+			return "", nil, errors.New(fmt.Sprintf("lost params %v", string(name)))
 		}
 		paramValue := transToString(value)
 		delete(datamap, string(name))
