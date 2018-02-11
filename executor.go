@@ -2,7 +2,6 @@ package gosql
 
 import (
 	"database/sql"
-	"fmt"
 	"strings"
 	upperDB "upper.io/db.v3"
 	"upper.io/db.v3/lib/sqlbuilder"
@@ -61,7 +60,7 @@ func QueryOne(conn sqlbuilder.Database, sqlStr string, params map[string]interfa
 }
 
 // IsDuplicatedMySQLError 判断是否为重复插入错误
-func IsDuplicatedMySQLError(err error) bool {
+func IsDuplicatedError(err error) bool {
 	return strings.Contains(err.Error(), "Error 1062: Duplicate")
 }
 
@@ -70,8 +69,6 @@ func prepareParams(conn sqlbuilder.Database, sql string, params map[string]inter
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(presql)
 
 	rows, err := conn.Query(presql, args...)
 	return rows, err

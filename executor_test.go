@@ -2,14 +2,9 @@ package gosql
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
-)
-
-const (
-	username = "root"
-	password = "1324"
-	url      = "0.0.0.0:3307"
-	dbname   = "test"
+	"upper.io/db.v3/lib/sqlbuilder"
 )
 
 type DriverInfo struct {
@@ -19,42 +14,173 @@ type DriverInfo struct {
 	Age      int    `db:"age"`
 }
 
-func TestExecute(t *testing.T) {
-	conn, err := GetMySQLConn(username, password, url, dbname)
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
+var conn sqlbuilder.Database
 
-	affected, err := Execute(conn, "insert into driver_info(driver_id, name, age) VALUES (123,'xurui',12)", nil)
+// 初始化 mysql 连接
+func init() {
+	var err error
+	conn, err = GetMySQLConn(username, password, url, dbname)
 	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if affected == -1 {
-		t.Fail()
+		fmt.Println("mysql connect init failed")
 	}
 }
 
-func TestGetOne(t *testing.T) {
-	conn, err := GetMySQLConn(username, password, url, dbname)
-	if err != nil {
-		t.Error(err)
-		t.Fail()
+// TestQueryOne 测试 QueryOne
+func TestQueryOne(t *testing.T) {
+
+	var tests = []struct {
+		datamap map[string]interface{}
+		want    DriverInfo
+		wantErr error
+		sql     string
+	}{
+		{
+			datamap: map[string]interface{}{
+				"tablename": "driver_info",
+				"id":        123,
+				"driver_id": 456,
+				"name":      "xurui",
+				"age":       12,
+				"sort":      " ",
+			},
+			want: DriverInfo{
+				ID:       123,
+				DriverID: 456,
+				Name:     "xurui",
+				Age:      12,
+			},
+			wantErr: nil,
+			sql:     "select * from #tablename where id=$id and driver_id=$driver_id and name=$name and age=$age #sort",
+		},
 	}
 
-	datamap := map[string]interface{}{
-		"tablename": "driver_info",
-		"driver_id": 123,
-		"sort":      " ",
+	for _, v := range tests {
+		var result DriverInfo
+		err := QueryOne(conn, v.sql, v.datamap, &result)
+		if err != v.wantErr {
+			t.Errorf("QueryOne||sql=%v", v.sql)
+			t.Errorf("QueryOne||want error=%v||get error=%v", v.wantErr, err)
+		}
+		if !reflect.DeepEqual(result, v.want) {
+			t.Errorf("QueryOne||sql=%v", v.sql)
+			t.Errorf("QueryOne||want=%v||get=%v", v.want, result)
+		}
 	}
 
-	var result DriverInfo
-	err = QueryOne(conn, "select * from #tablename where driver_id = $driver_id #sort", datamap, &result)
-	if err != nil {
-		t.Error(err)
-		t.Fail()
+	t.Log("test QueryOne finish")
+
+}
+
+// TestQueryList 测试 QueryList
+func TestQueryList(t *testing.T) {
+
+	var tests = []struct {
+		datamap map[string]interface{}
+		want    []DriverInfo
+		wantErr error
+		sql     string
+	}{
+		{
+			datamap: map[string]interface{}{
+				"tablename": "driver_info",
+				"limit":     "4",
+			},
+			want: []DriverInfo{
+				{123, 456, "xurui", 12},
+				{124, 457, "xurui", 13},
+				{125, 458, "xurui", 14},
+				{126, 459, "xurui", 15},
+			},
+			wantErr: nil,
+			sql:     "select * from #tablename limit #limit",
+		},
 	}
 
-	fmt.Println(result)
+	for _, v := range tests {
+		var resultList []DriverInfo
+		err := QueryList(conn, v.sql, v.datamap, &resultList)
+		if err != v.wantErr {
+			t.Errorf("QueryOne||sql=%v", v.sql)
+			t.Errorf("QueryOne||want error=%v||get error=%v", v.wantErr, err)
+		}
+
+		if !reflect.DeepEqual(v.want, resultList) {
+			t.Errorf("QueryList||sql=%v", v.sql)
+			t.Errorf("QueryList||want=%v||get=%v", v.want, resultList)
+		}
+	}
+
+	t.Log("test QueryList finish")
+}
+
+// TestExecute 测试 Execute
+func TestExecute(t *testing.T) {
+
+	var tests = []struct {
+		datamap map[string]interface{}
+		want    int64
+		wantErr error
+		sql     string
+	}{
+		{
+			datamap: map[string]interface{}{
+				"driver_id": 13579,
+				"name":      "xurui",
+				"age":       12,
+			},
+			want:    1,
+			wantErr: nil,
+			sql:     "insert into driver_info(driver_id, name, age) VALUES ($driver_id,$name,$age)",
+		},
+	}
+
+	for _, v := range tests {
+		affected, err := Execute(conn, v.sql, v.datamap)
+		if err != v.wantErr {
+			t.Errorf("Execute||sql=%v", v.sql)
+			t.Errorf("Execute||want error=%v||get error=%v", v.wantErr, err)
+		}
+		if affected != v.want {
+			t.Errorf("Execute||sql=%v", v.sql)
+			t.Errorf("Execute||want=%v||get=%v", v.want, affected)
+		}
+	}
+
+	t.Log("test Execute finish")
+}
+
+// TestIsDuplicatedError 测试 IsDuplicatedError
+func TestIsDuplicatedError(t *testing.T) {
+
+	var tests = []struct {
+		datamap map[string]interface{}
+		want    int64
+		wantErr error
+		sql     string
+	}{
+		{
+			datamap: map[string]interface{}{
+				"id":        123,
+				"driver_id": 123,
+				"name":      "xurui",
+				"age":       12,
+			},
+			want: 0,
+			sql:  "insert into driver_info(id, driver_id, name, age) VALUES ($id, $driver_id, $name, $age)",
+		},
+	}
+
+	for _, v := range tests {
+		affected, err := Execute(conn, v.sql, v.datamap)
+		if !IsDuplicatedError(err) {
+			t.Errorf("IsDuplicatedError||sql=%v", v.sql)
+			t.Errorf("IsDuplicatedError||want error=%v||get error=%v", v.wantErr, err)
+		}
+		if affected != v.want {
+			t.Errorf("IsDuplicatedError||sql=%v", v.sql)
+			t.Errorf("IsDuplicatedError||want=%v||get=%v", v.want, affected)
+		}
+	}
+
+	t.Log("test IsDuplicatedError finish")
 }
