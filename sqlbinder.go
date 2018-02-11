@@ -118,7 +118,7 @@ func getStatement(sqlStr []byte, datamap map[string]interface{}) (string, map[st
 		found = false
 	}
 
-	return string(sqlResult), datamap, nil
+	return string(sqlResult[:len(sqlResult)-1]), datamap, nil
 }
 
 //getPreparedStatement 转换 sql 字符串为 Prepared Statement 并将 属性名 提取出来
