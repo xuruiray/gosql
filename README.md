@@ -1,6 +1,6 @@
 # gosql
 
-Golang orm tool, and very similar to mybatis.
+golang sql builder tool, similar to mybatis.
 
 follow the example of <a href="http://github.com/jmoiron/sqlx/">github.com/jmoiron/sqlx</a>
 
