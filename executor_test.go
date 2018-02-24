@@ -2,7 +2,7 @@ package gosql
 
 import (
 	"fmt"
-	"reflect"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"upper.io/db.v3/lib/sqlbuilder"
 )
@@ -29,12 +29,14 @@ func init() {
 func TestQueryOne(t *testing.T) {
 
 	var tests = []struct {
-		datamap map[string]interface{}
-		want    DriverInfo
-		wantErr error
-		sql     string
+		caseName string
+		datamap  map[string]interface{}
+		want     DriverInfo
+		wantErr  error
+		sql      string
 	}{
 		{
+			caseName: "正常流程",
 			datamap: map[string]interface{}{
 				"tablename": "driver_info",
 				"id":        123,
@@ -57,30 +59,23 @@ func TestQueryOne(t *testing.T) {
 	for _, v := range tests {
 		var result DriverInfo
 		err := QueryOne(conn, v.sql, v.datamap, &result)
-		if err != v.wantErr {
-			t.Errorf("QueryOne||sql=%v", v.sql)
-			t.Errorf("QueryOne||want error=%v||get error=%v", v.wantErr, err)
-		}
-		if !reflect.DeepEqual(result, v.want) {
-			t.Errorf("QueryOne||sql=%v", v.sql)
-			t.Errorf("QueryOne||want=%v||get=%v", v.want, result)
-		}
+		assert.Equal(t, v.wantErr, err, "caseName: %v", v.caseName)
+		assert.Equal(t, v.want, result, "caseName: %v", v.caseName)
 	}
-
-	t.Log("test QueryOne finish")
-
 }
 
 // TestQueryList 测试 QueryList
 func TestQueryList(t *testing.T) {
 
 	var tests = []struct {
-		datamap map[string]interface{}
-		want    []DriverInfo
-		wantErr error
-		sql     string
+		caseName string
+		datamap  map[string]interface{}
+		want     []DriverInfo
+		wantErr  error
+		sql      string
 	}{
 		{
+			caseName: "正常流程",
 			datamap: map[string]interface{}{
 				"tablename": "driver_info",
 				"limit":     "4",
@@ -99,30 +94,23 @@ func TestQueryList(t *testing.T) {
 	for _, v := range tests {
 		var resultList []DriverInfo
 		err := QueryList(conn, v.sql, v.datamap, &resultList)
-		if err != v.wantErr {
-			t.Errorf("QueryOne||sql=%v", v.sql)
-			t.Errorf("QueryOne||want error=%v||get error=%v", v.wantErr, err)
-		}
-
-		if !reflect.DeepEqual(v.want, resultList) {
-			t.Errorf("QueryList||sql=%v", v.sql)
-			t.Errorf("QueryList||want=%v||get=%v", v.want, resultList)
-		}
+		assert.Equal(t, v.wantErr, err, "caseName: %v", v.caseName)
+		assert.Equal(t, v.want, resultList, "caseName: %v", v.caseName)
 	}
-
-	t.Log("test QueryList finish")
 }
 
 // TestExecute 测试 Execute
 func TestExecute(t *testing.T) {
 
 	var tests = []struct {
-		datamap map[string]interface{}
-		want    int64
-		wantErr error
-		sql     string
+		caseName string
+		datamap  map[string]interface{}
+		want     int64
+		wantErr  error
+		sql      string
 	}{
 		{
+			caseName: "正常流程",
 			datamap: map[string]interface{}{
 				"driver_id": 13579,
 				"name":      "xurui",
@@ -136,51 +124,39 @@ func TestExecute(t *testing.T) {
 
 	for _, v := range tests {
 		affected, err := Execute(conn, v.sql, v.datamap)
-		if err != v.wantErr {
-			t.Errorf("Execute||sql=%v", v.sql)
-			t.Errorf("Execute||want error=%v||get error=%v", v.wantErr, err)
-		}
-		if affected != v.want {
-			t.Errorf("Execute||sql=%v", v.sql)
-			t.Errorf("Execute||want=%v||get=%v", v.want, affected)
-		}
+		assert.Equal(t, v.wantErr, err, "caseName: %v", v.caseName)
+		assert.Equal(t, v.want, affected, "caseName: %v", v.caseName)
 	}
-
-	t.Log("test Execute finish")
 }
 
 // TestIsDuplicatedError 测试 IsDuplicatedError
 func TestIsDuplicatedError(t *testing.T) {
 
 	var tests = []struct {
-		datamap map[string]interface{}
-		want    int64
-		wantErr error
-		sql     string
+		caseName   string
+		datamap    map[string]interface{}
+		want       bool
+		wantAffect int64
+		sql        string
 	}{
 		{
+			caseName: "正常流程",
 			datamap: map[string]interface{}{
 				"id":        123,
 				"driver_id": 123,
 				"name":      "xurui",
 				"age":       12,
 			},
-			want: 0,
-			sql:  "insert into driver_info(id, driver_id, name, age) VALUES ($id, $driver_id, $name, $age)",
+			want:       true,
+			wantAffect: 0,
+			sql:        "insert into driver_info(id, driver_id, name, age) VALUES ($id, $driver_id, $name, $age)",
 		},
 	}
 
 	for _, v := range tests {
 		affected, err := Execute(conn, v.sql, v.datamap)
-		if !IsDuplicatedError(err) {
-			t.Errorf("IsDuplicatedError||sql=%v", v.sql)
-			t.Errorf("IsDuplicatedError||want error=%v||get error=%v", v.wantErr, err)
-		}
-		if affected != v.want {
-			t.Errorf("IsDuplicatedError||sql=%v", v.sql)
-			t.Errorf("IsDuplicatedError||want=%v||get=%v", v.want, affected)
-		}
+		isDup := IsDuplicatedError(err)
+		assert.Equal(t, v.wantAffect, affected, "caseName: %v", v.caseName)
+		assert.Equal(t, v.want, isDup, "caseName: %v", v.caseName)
 	}
-
-	t.Log("test IsDuplicatedError finish")
 }

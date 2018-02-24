@@ -13,8 +13,13 @@ import (
 //GetPreparedStatement 将传入的sql与params参数 整理成 prepare statement
 func GetPreparedStatement(sql string, params map[string]interface{}) (string, []interface{}, error) {
 
+	//拼接参数
 	sql, params, err := getStatement([]byte(sql), params)
+	if err != nil {
+		return "", nil, err
+	}
 
+	//占位符替换参数
 	sql, names, err := getPrepared(sql)
 	if err != nil {
 		return "", nil, err
@@ -31,7 +36,7 @@ func bindMap(sql string, names []string, params map[string]interface{}) (string,
 	for i, name := range names {
 		v, ok := params[name]
 		if !ok {
-			return "", nil, errors.New("can`t match param " + name)
+			return "", nil, errors.New("lost params " + string(name))
 		}
 
 		if !isSlice(v) {
@@ -60,11 +65,6 @@ func getStatement(sqlStr []byte, datamap map[string]interface{}) (string, map[st
 	//保证最后一个参数也能被处理
 	sqlStr = append(sqlStr, ' ')
 
-	//若无需拼接字符串，则直接返回
-	if len(datamap) == 0 {
-		return string(sqlStr), datamap, nil
-	}
-
 	found := false
 	name := make([]byte, 0, 12)
 	sqlResult := make([]byte, 0, len(sqlStr))
@@ -75,6 +75,7 @@ func getStatement(sqlStr []byte, datamap map[string]interface{}) (string, map[st
 			if sqlStr[i-1] == '#' {
 				sqlResult = append(sqlResult, '#')
 				found = false
+				continue
 			}
 			if found {
 				return "", nil, errors.New("can`t insert # in the params")
@@ -91,7 +92,7 @@ func getStatement(sqlStr []byte, datamap map[string]interface{}) (string, map[st
 		if found && b != '.' && b != '_' && !unicode.IsLetter(rune(b)) && !unicode.IsNumber(rune(b)) {
 			value, ok := datamap[string(name)]
 			if !ok {
-				return "", nil, errors.New(fmt.Sprintf("lost params %v", string(name)))
+				return "", nil, errors.New("lost params " + string(name))
 			}
 			paramValue := transToString(value)
 			delete(datamap, string(name))
@@ -107,33 +108,22 @@ func getStatement(sqlStr []byte, datamap map[string]interface{}) (string, map[st
 
 	}
 
-	if found {
-		value, ok := datamap[string(name)]
-		if !ok {
-			return "", nil, errors.New(fmt.Sprintf("lost params %v", string(name)))
-		}
-		paramValue := transToString(value)
-		delete(datamap, string(name))
-		sqlResult = bytes.Join([][]byte{sqlResult, []byte(paramValue)}, nil)
-		found = false
-	}
-
 	return string(sqlResult[:len(sqlResult)-1]), datamap, nil
 }
 
 //getPreparedStatement 转换 sql 字符串为 Prepared Statement 并将 属性名 提取出来
 func getPrepared(sqlStr string) (string, []string, error) {
-	names := make([]string, 0, 10)
 
 	begin := 0
 	found := false
+	names := make([]string, 0, 10)
 	sqlResult := make([]rune, 0, len(sqlStr))
 
 	for i, b := range sqlStr {
 		if b == '$' {
 			//若存在 '$$' 则转译为 $
 			if sqlStr[i-1] == '$' {
-				sqlResult = append(sqlResult, ':')
+				sqlResult[len(sqlResult)-1] = '$'
 				found = false
 				continue
 			}

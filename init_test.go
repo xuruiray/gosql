@@ -1,6 +1,9 @@
 package gosql
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 const (
 	username = "root"
@@ -11,14 +14,7 @@ const (
 
 func TestGetMySQLConn(t *testing.T) {
 	conn, err := GetMySQLConn(username, password, url, dbname)
-	if err != nil {
-		t.Error(err)
-		t.Fail()
-	}
-	if conn == nil {
-		t.Error("connect is nil")
-		t.Fail()
-	}
 
-	t.Log("test GetMySQLConn finish")
+	assert.Equal(t, nil, err, "error:%v", err)
+	assert.NotEqual(t, nil, conn)
 }

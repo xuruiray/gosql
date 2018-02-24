@@ -5,7 +5,7 @@ golang sql builder tool, similar to mybatis.
 follow the example of <a href="http://github.com/jmoiron/sqlx/">github.com/jmoiron/sqlx</a>
 
 ```
-go get github.com/Xu-Rui/gosql
+go get github.com/xuruiray/gosql
 ```
 ---
 ### example
